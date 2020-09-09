@@ -83,10 +83,11 @@ function texparser:raw_tokens(text, filename)
   local tokens = {}
   for line in  text:gmatch("([^\n]*)") do
     line_no = line_no + 1
-    for _,token in ipairs(self:tokenize(line, line_no)) do -- process tokens on the current line
+    local parsed_tokens, maxpos = self:tokenize(line, line_no)
+    for _,token in ipairs(parsed_tokens) do -- process tokens on the current line
       tokens[#tokens+1] = token
     end
-    tokens[#tokens+1] = self:make_token("\n", c_endline, line_no) -- add new line char
+    tokens[#tokens+1] = self:make_token("\n", c_endline, line_no, maxpos + 1) -- add new line char
   end
   self.raw_tokens = tokens
   return tokens
@@ -113,14 +114,14 @@ function texparser:read_cs(tokens,pos, newtokens)
   return pos
 end
 
-function texparser:read_token(raw_tokens, pos)
+function texparser:next_token(raw_tokens, pos)
   return raw_tokens[pos]
 end
 
 function texparser:parse_cs(raw_tokens)
   local newtokens = {}
   local pos = 1
-  local token = self:read_token(raw_tokens, pos) 
+  local token = self:next_token(raw_tokens, pos) 
   while token do
     if token.type == c_escape then
       pos = self:read_cs(raw_tokens, pos + 1, newtokens)
@@ -128,16 +129,12 @@ function texparser:parse_cs(raw_tokens)
       newtokens[#newtokens + 1] = token
       pos = pos + 1
     end
-    token = self:read_token(raw_tokens, pos)
+    token = self:next_token(raw_tokens, pos)
   end
   return newtokens
 
 end
 
-function texparser:make_token(value, typ, line_no)
-  local filename = self.filename
-  return  {line = line_no, file=filename, value = value, type = typ}
-end
 
 -- 
 function texparser:parse(text, filename)
@@ -184,7 +181,7 @@ local tokens = parser:parse()
 for _, token in ipairs(tokens) do
   print(token.line, token.file, 
   token.value:gsub("%s", "") --- don't print newlines
-  , token.type)
+  , token.type, token.column)
 end
 
 return getparser
