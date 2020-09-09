@@ -81,10 +81,11 @@ function texparser:raw_tokens(text, filename)
     end
     tokens[#tokens+1] = self:make_token("\n", c_endline, line_no) -- add new line char
   end
+  self.raw_tokens = tokens
   return tokens
 end
 
-local function read_cs(tokens,pos, newtokens)
+function texparser:read_cs(tokens,pos, newtokens)
   local function is_part_of_cs(token)
     if token.type == c_letter then
       return true
@@ -105,22 +106,22 @@ local function read_cs(tokens,pos, newtokens)
   return pos
 end
 
-local function read_token(raw_tokens, pos)
+function texparser:read_token(raw_tokens, pos)
   return raw_tokens[pos]
 end
 
 function texparser:parse_cs(raw_tokens)
   local newtokens = {}
   local pos = 1
-  local token = read_token(raw_tokens, pos) 
+  local token = self:read_token(raw_tokens, pos) 
   while token do
     if token.type == c_escape then
-      pos = read_cs(raw_tokens, pos + 1, newtokens)
+      pos = self:read_cs(raw_tokens, pos + 1, newtokens)
     else
       newtokens[#newtokens + 1] = token
       pos = pos + 1
     end
-    token = read_token(raw_tokens, pos)
+    token = self:read_token(raw_tokens, pos)
   end
   return newtokens
 
