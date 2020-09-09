@@ -117,7 +117,15 @@ function texparser:read_cs(tokens,pos, newtokens)
     -- token = tokens[pos]
     token = self:next_token()
   end
-  self:prev_token() -- fix the pointer to the current token
+  if #current == 0 then
+    token = self:prev_token()
+    if token then
+      current = {token.value } -- parse at least the next character
+      self.pos = self.pos + 1
+    end
+  else
+    self:prev_token() -- fix the pointer to the current token
+  end
   cs_token.value = table.concat(current) -- value now contains cs name
   newtokens[#newtokens + 1] = cs_token
   return pos
@@ -127,6 +135,10 @@ function texparser:next_token(raw_tokens, pos)
   local pos = self.pos
   self.pos = pos + 1
   return self.raw_tokens[pos]
+end
+
+function texparser:current_token()
+  return self.raw_tokens[self.pos]
 end
 
 function texparser:prev_token()
@@ -177,8 +189,6 @@ nazdar & svete
 Příliš žluťoučký kůň \textit{přes
 dva řádky, i~to je pěkné}. Nějaký \verb|inline verb|.
 
-Jo a co speciální znaky? \$, \#.
-
 A samozřejmě $a=\sqrt{a^2 + c}$  inline math.
 \test[key=value,
 another=anothervalue]{a text}
@@ -190,6 +200,8 @@ Hello verbatim
 \makeatletter
 \hello@world{something}
 \makeatother
+
+Jo a co speciální znaky? \$, \#.
 
 \end{document}
 ]]
