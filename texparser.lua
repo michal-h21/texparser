@@ -109,25 +109,37 @@ function texparser:read_cs(tokens,pos, newtokens)
     end
   end
   local current = {}
-  local token = tokens[pos]
-  local cs_token = tokens[pos-1] -- the cs starts one character to the left
-  while is_part_of_cs(token) do -- loop over characters that are part of cs
+  local cs_token = self.raw_tokens[self.pos] -- the cs starts one character to the left
+  local token = self:next_token()
+  while token and is_part_of_cs(token) do -- loop over characters that are part of cs
     current[#current + 1] = token.value -- concat characters
     pos = pos + 1
-    token = tokens[pos]
+    -- token = tokens[pos]
+    token = self:next_token()
   end
+  self:prev_token() -- fix the pointer to the current token
   cs_token.value = table.concat(current) -- value now contains cs name
   newtokens[#newtokens + 1] = cs_token
   return pos
 end
 
 function texparser:next_token(raw_tokens, pos)
-  return raw_tokens[pos]
+  local pos = self.pos
+  self.pos = pos + 1
+  return self.raw_tokens[pos]
 end
 
-function texparser:parse_cs(raw_tokens)
+function texparser:prev_token()
+  local pos = self.pos - 1
+  self.pos = pos
+  return self.raw_tokens[pos]
+end
+
+-- detect control sequences, math, etc.
+function texparser:process(raw_tokens)
   local newtokens = {}
-  local pos = 1
+  self.pos = 1
+  local pos = self.pos
   local token = self:next_token(raw_tokens, pos) 
   while token do
     if token.type == c_escape then
@@ -148,7 +160,7 @@ function texparser:parse(text, filename)
   local text = text or self.source
   self.filename = filename or self.filename
   local raw_tokens = self:raw_tokens(text) -- initial tokenization
-  local tokens = self:parse_cs(raw_tokens) -- detect commands, environments and groups
+  local tokens = self:process(raw_tokens) -- detect commands, environments and groups
   return tokens
 end
 
