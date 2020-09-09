@@ -109,7 +109,8 @@ function texparser:read_cs(tokens,pos, newtokens)
     end
   end
   local current = {}
-  local cs_token = self.raw_tokens[self.pos] -- the cs starts one character to the left
+  local cs_token = self:prev_token() -- the cs starts one character to the left
+  self:next_token() -- skip one token
   local token = self:next_token()
   while token and is_part_of_cs(token) do -- loop over characters that are part of cs
     current[#current + 1] = token.value -- concat characters
