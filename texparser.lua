@@ -72,9 +72,16 @@ function texparser:tokenize(line, line_no)
   return tokens, maxpos
 end
 
+-- 
 function texparser:make_token(value, typ, line_no, col)
   local filename = self.filename -- keep tracks of input files
-  return  {line = line_no, file=filename, value = value, type = typ, column = col}
+  return  {
+    line = line_no, -- line number where character was parsed 
+    file=filename, -- input file
+    value = value, -- character at this moment
+    type = typ, -- catcode
+    column = col -- column where character was placed in the original file
+}
 end
 
 function texparser:raw_tokens(text, filename)
