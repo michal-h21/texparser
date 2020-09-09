@@ -113,7 +113,6 @@ end
 
 function texparser:prev_token()
   local pos = self.pos - 1
-  self.pos = pos
   return self.raw_tokens[pos]
 end
 
@@ -128,7 +127,6 @@ function texparser:read_cs(newtokens)
   end
   local current = {}
   local cs_token = self:prev_token() -- the cs starts one character to the left
-  self:next_token() -- skip one token
   local token = self:next_token()
   while token and is_part_of_cs(token) do -- loop over characters that are part of cs
     current[#current + 1] = token.value -- concat characters
@@ -141,7 +139,7 @@ function texparser:read_cs(newtokens)
       self.pos = self.pos + 1
     end
   else
-    self:prev_token() -- fix the pointer to the current token
+    self.pos = self.pos - 1 -- fix the pointer to the current token
   end
   cs_token.value = table.concat(current) -- value now contains cs name
   newtokens[#newtokens + 1] = cs_token
@@ -219,7 +217,7 @@ but also on another line.
 \end{document}
 ]]
 
-test  = "a%b~$"
+test  = "a\\helo c%b~$\nx"
 
 -- test parsing
 local parser = getparser(test, "sample.tex")
