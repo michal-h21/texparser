@@ -57,17 +57,24 @@ set_type(c_space, "~")
 set_type(c_comment,"%")
 
 
-
+-- convert input characters to tokens
 function texparser:tokenize(line, line_no)
   local tokens = {}
-  for _, char in get_chars(line) do
+  local maxpos = 0
+  for pos, char in get_chars(line) do
     local typ = self.types[char]
     if not typ then
       typ = ((char > 64 and char < 91) or (char > 96 and char < 123)) and c_letter or c_other
     end
-    tokens[#tokens+1] =  self:make_token(utfchar(char), typ, line_no)
+    tokens[#tokens+1] =  self:make_token(utfchar(char), typ, line_no, pos)
+    maxpos = pos -- save highest position, in order to be able to correctly make token for a newline
   end
-  return tokens
+  return tokens, maxpos
+end
+
+function texparser:make_token(value, typ, line_no, col)
+  local filename = self.filename -- keep tracks of input files
+  return  {line = line_no, file=filename, value = value, type = typ, column = col}
 end
 
 function texparser:raw_tokens(text, filename)
