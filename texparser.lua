@@ -43,6 +43,7 @@ local c_subscript = 8
 local c_space = 10
 local c_letter = 11
 local c_other = 12
+local c_comment = 14
 set_type(c_escape,'\\')
 set_type(c_begin, "{")
 set_type(c_end, "}")
@@ -84,7 +85,7 @@ function texparser:make_token(value, typ, line_no, col)
 }
 end
 
-function texparser:raw_tokens(text, filename)
+function texparser:get_raw_tokens(text, filename)
   -- convert text to list of characters with assigned catcode
   local line_no = 0
   local tokens = {}
@@ -98,38 +99,6 @@ function texparser:raw_tokens(text, filename)
   end
   self.raw_tokens = tokens
   return tokens
-end
-
-function texparser:read_cs(tokens,pos, newtokens)
-  local function is_part_of_cs(token)
-    if token.type == c_letter then
-      return true
-    elseif token.type == c_other then
-      if token.value == "@" then return true end -- support internal commands
-    end
-  end
-  local current = {}
-  local cs_token = self:prev_token() -- the cs starts one character to the left
-  self:next_token() -- skip one token
-  local token = self:next_token()
-  while token and is_part_of_cs(token) do -- loop over characters that are part of cs
-    current[#current + 1] = token.value -- concat characters
-    pos = pos + 1
-    -- token = tokens[pos]
-    token = self:next_token()
-  end
-  if #current == 0 then
-    token = self:prev_token()
-    if token then
-      current = {token.value } -- parse at least the next character
-      self.pos = self.pos + 1
-    end
-  else
-    self:prev_token() -- fix the pointer to the current token
-  end
-  cs_token.value = table.concat(current) -- value now contains cs name
-  newtokens[#newtokens + 1] = cs_token
-  return pos
 end
 
 function texparser:next_token(raw_tokens, pos)
@@ -148,18 +117,58 @@ function texparser:prev_token()
   return self.raw_tokens[pos]
 end
 
+
+function texparser:read_cs(newtokens)
+  local function is_part_of_cs(token)
+    if token.type == c_letter then
+      return true
+    elseif token.type == c_other then
+      if token.value == "@" then return true end -- support internal commands
+    end
+  end
+  local current = {}
+  local cs_token = self:prev_token() -- the cs starts one character to the left
+  self:next_token() -- skip one token
+  local token = self:next_token()
+  while token and is_part_of_cs(token) do -- loop over characters that are part of cs
+    current[#current + 1] = token.value -- concat characters
+    token = self:next_token()
+  end
+  if #current == 0 then
+    token = self:prev_token()
+    if token then
+      current = {token.value } -- parse at least the next character
+      self.pos = self.pos + 1
+    end
+  else
+    self:prev_token() -- fix the pointer to the current token
+  end
+  cs_token.value = table.concat(current) -- value now contains cs name
+  newtokens[#newtokens + 1] = cs_token
+  return pos
+end
+
+function texparser:read_comment(newtokens)
+  local token = self:next_token()
+  local current = {}
+  while token and token.typ ~= c_endline do
+    current[#current+1] = token.value
+    token = self:next_token()
+  end
+end
+
 -- detect control sequences, math, etc.
 function texparser:process(raw_tokens)
   local newtokens = {}
   self.pos = 1
-  local pos = self.pos
-  local token = self:next_token(raw_tokens, pos) 
+  local token = self:next_token() 
   while token do
     if token.type == c_escape then
-      pos = self:read_cs(raw_tokens, pos + 1, newtokens)
+      self:read_cs(newtokens)
+    elseif token.type == c_comment then
+      self:read_comment(newtokens)
     else
       newtokens[#newtokens + 1] = token
-      pos = pos + 1
     end
     token = self:next_token(raw_tokens, pos)
   end
@@ -172,7 +181,7 @@ end
 function texparser:parse(text, filename)
   local text = text or self.source
   self.filename = filename or self.filename
-  local raw_tokens = self:raw_tokens(text) -- initial tokenization
+  local raw_tokens = self:get_raw_tokens(text) -- initial tokenization
   local tokens = self:process(raw_tokens) -- detect commands, environments and groups
   return tokens
 end
@@ -202,10 +211,15 @@ Hello verbatim
 \hello@world{something}
 \makeatother
 
-Jo a co speciální znaky? \$, \#.
+Jo a co speciální znaky? \$, \#, \\.
+
+Line % with some content after comment,
+but also on another line.
 
 \end{document}
 ]]
+
+test  = "a%b~$"
 
 -- test parsing
 local parser = getparser(test, "sample.tex")
