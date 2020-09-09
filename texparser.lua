@@ -149,7 +149,7 @@ end
 function texparser:read_comment(newtokens)
   local token = self:next_token()
   local current = {}
-  while token and token.typ ~= c_endline do
+  while token and token.type ~= c_endline do
     current[#current+1] = token.value
     token = self:next_token()
   end
