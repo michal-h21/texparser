@@ -93,6 +93,7 @@ function texparser:get_raw_tokens(text, filename)
   local tokens = {}
   for line in  text:gmatch("([^\n]*)") do
     line_no = line_no + 1
+    line = line:gsub(" *$", "")  -- remove space characters at the end of line
     local parsed_tokens, maxpos = self:tokenize(line, line_no)
     for _,token in ipairs(parsed_tokens) do -- process tokens on the current line
       tokens[#tokens+1] = token
@@ -161,6 +162,7 @@ end
 -- detect control sequences, math, etc.
 function texparser:process(raw_tokens)
   local newtokens = {}
+  self.raw_tokens = self.raw_tokens or raw_tokens
   self.pos = 1
   local token = self:next_token() 
   while token do
@@ -231,4 +233,7 @@ for _, token in ipairs(tokens) do
   , token.type, token.column)
 end
 
-return getparser
+return {
+  texparser = getparser,
+  tokenprocessor = tokenprocessor
+}
