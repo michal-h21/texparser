@@ -87,6 +87,8 @@ end
 
 function texparser:get_raw_tokens(text, filename)
   -- convert text to list of characters with assigned catcode
+  -- I know that TeX doesn't tokenize full text at once, we do it for simplicity, 
+  -- as we don't intend to support full expansion etc. We may change it in the future if necessary
   local line_no = 0
   local tokens = {}
   for line in  text:gmatch("([^\n]*)") do
