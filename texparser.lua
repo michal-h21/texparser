@@ -97,6 +97,7 @@ function texparser:get_raw_tokens(text, filename)
     end
     tokens[#tokens+1] = self:make_token("\n", c_endline, line_no, maxpos + 1) -- add new line char
   end
+  tokens[#tokens] = nil -- remove last spurious endline
   self.raw_tokens = tokens
   return tokens
 end
@@ -201,7 +202,7 @@ A samozřejmě $a=\sqrt{a^2 + c}$  inline math.
 \test[key=value,
 another=anothervalue]{a text}
 
-\begin{verbtatim}
+\begin{verbatim}
 Hello verbatim
 \end{verbatim}
 
