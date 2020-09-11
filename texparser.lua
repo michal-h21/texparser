@@ -11,8 +11,9 @@ local utfcodepoint = utf8.codepoint
 
 -- initialize texparser object
 local texparser = {
-  catcodes={}
 }
+
+local default_catcodes = {}
 
 texparser.__index = texparser
 
@@ -22,13 +23,15 @@ local function getparser(text, filename)
   self.filename = filename
   self.texcommands = texcommands
   self.source = text
+  self.catcodes= {}
+  for k,v in pairs(default_catcodes) do self.catcodes[k] = v end
   return self
 end
 
 
 -- declare utf8 values for basic tex categories
 function set_type(name, character) 
-  texparser.catcodes[utfcodepoint(character)] = name 
+  default_catcodes[utfcodepoint(character)] = name 
 end
 
 -- initialize catcodes
@@ -238,6 +241,6 @@ for _, token in ipairs(tokens) do
 end
 
 return {
-  texparser = getparser,
+  getparser = getparser,
   tokenprocessor = tokenprocessor
 }
