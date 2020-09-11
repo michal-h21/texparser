@@ -28,6 +28,9 @@ describe("token scanning", function()
     assert.are.equal("b", utf8.char(scanparser:next_char()))
     assert.are.equal(nil, scanparser:next_char())
   end)
+  it("can scan tokens", function()
+
+  end)
 end)
 
 

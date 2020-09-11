@@ -27,6 +27,7 @@ local function getparser(text, filename)
   self.source_pos = 1 -- current position in the input buffer
   self.source_len = utf8.len(text)
   self.line_no = 1 -- current line
+  self.column = 1 -- current position on a line
   self.catcodes= {}
   for k,v in pairs(default_catcodes) do self.catcodes[k] = v end
   return self
@@ -125,17 +126,32 @@ function texparser:get_raw_tokens(text, filename)
   return tokens
 end
 
+-- parse next character from the input buffer 
 function texparser:next_char()
   local source_pos = self.source_pos
-  if not (source_pos <= self.source_len) then return nil end
+  -- stop parsing when we are at the end of buffer
+  if not (source_pos <= self.source_len) then return nil, "end of input buffer" end
   local offset = utfoffset(self.source, source_pos)
   self.source_pos = source_pos + 1
   return utfcodepoint(self.source, offset)
 end
 
+
 -- scan next token from the input buffer
 function texparser:scan_token()
-  local char = self:next_char()
+  local codepoint, msg = self:next_char()
+  if not codepoint then return nil, msg end
+  local catcode = self:get_token_catcode(codepoint)
+  local token = self:make_token(utfchar(codepoint), catcode, self.line_no, self.column)
+  -- break line
+  -- if catcode == c_endline then
+  --   self.column = 0
+  --   self.line_no = self.line_no + 1
+  -- end
+  -- self.column = self.column + 1
+  -- table.insert(self.raw_tokens, token)
+  -- self.pos = #self.raw_tokens
+  return token
 end
 
 
@@ -145,7 +161,7 @@ function texparser:next_token()
   self.pos = pos + 1
   local token = self.raw_tokens[pos]
   if token then return token end
-  return self:scan_token()
+  -- return self:scan_token()
 end
 
 function texparser:current_token()
