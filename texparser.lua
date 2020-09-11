@@ -56,6 +56,7 @@ set_type(c_superscript, "^")
 set_type(c_subscript, "_")
 set_type(c_space, " ")
 set_type(c_space, "\t")
+set_type(c_letter, "@")
 set_type(c_active, "~")
 set_type(c_comment,"%")
 set_type(c_endline, "\n")
@@ -129,8 +130,6 @@ function texparser:read_cs(newtokens)
   local function is_part_of_cs(token)
     if token.type == c_letter then
       return true
-    elseif token.type == c_other then
-      if token.value == "@" then return true end -- support internal commands
     end
   end
   local current = {}
