@@ -1,5 +1,5 @@
 local parser_lib = require "texparser"
-local texparser = parser_lib.texparser
+local texparser = parser_lib.getparser
 
 -- some helper functions
 ------------------------------
@@ -33,6 +33,19 @@ describe("basic tests", function()
     assert.are.equal(tex_to_text "hello \\textit{world}", "hello world")
     assert.are.equal(tex_to_text "hello \\textit@at{world}", "hello world")
   end)
+
+end)
+
+describe("catcode updates", function()
+  local text = "\\hello@world{???}"
+  local special_parser = texparser(text) -- this one will have different catcode for @
+  special_parser.catcodes[utf8.codepoint("@")] = 12
+  local normal_parser = texparser(text)
+  it("normal parser should see @ char as part of command", function()
+    assert.are.equal("???", to_text(normal_parser:parse()))
+    assert.are.equal("@world???", to_text(special_parser:parse()))
+  end)
+
 
 end)
 
