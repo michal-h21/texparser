@@ -8,6 +8,7 @@ local texcommands = require "texcommands"
 local get_chars = utf8.codes
 local utfchar = utf8.char
 local utfcodepoint = utf8.codepoint
+local utfoffset = utf8.offset
 
 -- initialize texparser object
 local texparser = {
@@ -23,6 +24,9 @@ local function getparser(text, filename)
   self.filename = filename
   self.texcommands = texcommands -- object with command actions
   self.source = text -- input text
+  self.source_pos = 1 -- current position in the input buffer
+  self.source_len = utf8.len(text)
+  self.line_no = 1 -- current line
   self.catcodes= {}
   for k,v in pairs(default_catcodes) do self.catcodes[k] = v end
   return self
@@ -121,10 +125,27 @@ function texparser:get_raw_tokens(text, filename)
   return tokens
 end
 
-function texparser:next_token(raw_tokens, pos)
+function texparser:next_char()
+  local source_pos = self.source_pos
+  if not (source_pos <= self.source_len) then return nil end
+  local offset = utfoffset(self.source, source_pos)
+  self.source_pos = source_pos + 1
+  return utfcodepoint(self.source, offset)
+end
+
+-- scan next token from the input buffer
+function texparser:scan_token()
+  local char = self:next_char()
+end
+
+
+
+function texparser:next_token()
   local pos = self.pos
   self.pos = pos + 1
-  return self.raw_tokens[pos]
+  local token = self.raw_tokens[pos]
+  if token then return token end
+  return self:scan_token()
 end
 
 function texparser:current_token()
