@@ -40,9 +40,11 @@ local c_endline = 5
 local c_parameter = 6
 local c_superscript = 7
 local c_subscript = 8
+local c_ignore = 9
 local c_space = 10
 local c_letter = 11
 local c_other = 12
+local c_active = 13
 local c_comment = 14
 set_type(c_escape,'\\')
 set_type(c_begin, "{")
@@ -54,8 +56,10 @@ set_type(c_superscript, "^")
 set_type(c_subscript, "_")
 set_type(c_space, " ")
 set_type(c_space, "\t")
-set_type(c_space, "~")
+set_type(c_active, "~")
 set_type(c_comment,"%")
+set_type(c_endline, "\n")
+set_type(c_ignore, "\r")
 
 
 -- convert input characters to tokens
