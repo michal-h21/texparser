@@ -18,11 +18,11 @@ local default_catcodes = {}
 texparser.__index = texparser
 
 local function getparser(text, filename)
-  local filename = filename or "texput"
+  local filename = filename or "texput" -- default input name is texput
   local self = setmetatable({}, texparser)
   self.filename = filename
-  self.texcommands = texcommands
-  self.source = text
+  self.texcommands = texcommands -- object with command actions
+  self.source = text -- input text
   self.catcodes= {}
   for k,v in pairs(default_catcodes) do self.catcodes[k] = v end
   return self
@@ -66,16 +66,22 @@ set_type(c_comment,"%")
 set_type(c_endline, "\n")
 set_type(c_ignore, "\r")
 
+function texparser:get_token_catcode(char)
+  local catcode = self.catcodes[char]
+  if not catcode then
+    catcode = ((char > 64 and char < 91) or (char > 96 and char < 123)) and c_letter or c_other
+  end
+  return catcode
+end
 
 -- convert input characters to tokens
 function texparser:tokenize(line, line_no)
   local tokens = {}
   local maxpos = 0
   for pos, char in get_chars(line) do
-    local catcode = self.catcodes[char]
-    if not catcode then
-      catcode = ((char > 64 and char < 91) or (char > 96 and char < 123)) and c_letter or c_other
-    end
+    self.line_no = line_no
+    self.column = pos
+    local catcode = self:get_token_catcode(char)
     tokens[#tokens+1] =  self:make_token(utfchar(char), catcode, line_no, pos)
     maxpos = pos -- save highest position, in order to be able to correctly make token for a newline
   end
@@ -93,6 +99,7 @@ function texparser:make_token(value, catcode, line_no, col)
     column = col -- column where character was placed in the original file
 }
 end
+
 
 function texparser:get_raw_tokens(text, filename)
   -- convert text to list of characters with assigned catcode
