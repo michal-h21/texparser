@@ -7,6 +7,7 @@ local texcommands = require "texcommands"
 -- function pointers
 local get_chars = utf8.codes
 local utfchar = utf8.char
+local utfcodepoint = utf8.codepoint
 
 -- initialize texparser object
 local texparser = {
@@ -27,7 +28,7 @@ end
 
 -- declare utf8 values for basic tex categories
 function set_type(name, character) 
-  texparser.types[string.byte(character)] = name -- interesting characters are ASCII, no need for unicode here
+  texparser.types[utfcodepoint(character)] = name 
 end
 
 -- initialize catcodes
