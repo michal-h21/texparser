@@ -69,24 +69,24 @@ function texparser:tokenize(line, line_no)
   local tokens = {}
   local maxpos = 0
   for pos, char in get_chars(line) do
-    local typ = self.catcodes[char]
-    if not typ then
-      typ = ((char > 64 and char < 91) or (char > 96 and char < 123)) and c_letter or c_other
+    local catcode = self.catcodes[char]
+    if not catcode then
+      catcode = ((char > 64 and char < 91) or (char > 96 and char < 123)) and c_letter or c_other
     end
-    tokens[#tokens+1] =  self:make_token(utfchar(char), typ, line_no, pos)
+    tokens[#tokens+1] =  self:make_token(utfchar(char), catcode, line_no, pos)
     maxpos = pos -- save highest position, in order to be able to correctly make token for a newline
   end
   return tokens, maxpos
 end
 
 -- 
-function texparser:make_token(value, typ, line_no, col)
+function texparser:make_token(value, catcode, line_no, col)
   local filename = self.filename -- keep tracks of input files
   return  {
     line = line_no, -- line number where character was parsed 
     file=filename, -- input file
     value = value, -- character at this moment
-    type = typ, -- catcode
+    catcode = catcode, -- catcode
     column = col -- column where character was placed in the original file
 }
 end
@@ -129,7 +129,7 @@ end
 
 function texparser:read_cs(newtokens)
   local function is_part_of_cs(token)
-    if token.type == c_letter then
+    if token.catcode == c_letter then
       return true
     end
   end
@@ -157,7 +157,7 @@ end
 function texparser:read_comment(newtokens)
   local token = self:next_token()
   local current = {}
-  while token and token.type ~= c_endline do
+  while token and token.catcode ~= c_endline do
     current[#current+1] = token.value
     token = self:next_token()
   end
@@ -170,9 +170,9 @@ function texparser:process(raw_tokens)
   self.pos = 1
   local token = self:next_token() 
   while token do
-    if token.type == c_escape then
+    if token.catcode == c_escape then
       self:read_cs(newtokens)
-    elseif token.type == c_comment then
+    elseif token.catcode == c_comment then
       self:read_comment(newtokens)
     else
       newtokens[#newtokens + 1] = token
@@ -234,7 +234,7 @@ local tokens = parser:parse()
 for _, token in ipairs(tokens) do
   print(token.line, token.file, 
   token.value:gsub("%s", "") --- don't print newlines
-  , token.type, token.column)
+  , token.catcode, token.column)
 end
 
 return {

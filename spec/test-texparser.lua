@@ -8,7 +8,7 @@ local function to_text(tokens)
   local allowed = {[10]=true, [11] = true, [12] = true}
   local text = {}
   for _, x in ipairs(tokens) do
-    if allowed[x.type] then
+    if allowed[x.catcode] then
       text[#text+1] = x.value
     end
   end
@@ -28,6 +28,10 @@ describe("basic tests", function()
   end)
   it("can handle comments",function()
     assert.are.equal(tex_to_text "hello% world", "hello")
+  end)
+  it("removes  cs sequences", function()
+    assert.are.equal(tex_to_text "hello \\textit{world}", "hello world")
+    assert.are.equal(tex_to_text "hello \\textit@at{world}", "hello world")
   end)
 
 end)
