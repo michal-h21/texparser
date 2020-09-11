@@ -21,6 +21,16 @@ local function tex_to_text(text)
   return to_text(parser:parse())
 end
 
+describe("token scanning", function()
+  local scanparser = texparser("ab")
+  it("can parse characters", function()
+    assert.are.equal("a", utf8.char(scanparser:next_char()))
+    assert.are.equal("b", utf8.char(scanparser:next_char()))
+    assert.are.equal(nil, scanparser:next_char())
+  end)
+end)
+
+
 describe("basic tests", function()
   it("can parse text", function()
     assert.are.equal("a", tex_to_text("a"))
@@ -49,9 +59,3 @@ describe("catcode updates", function()
 
 end)
 
-local test = "příliš žluťoučký kůň úpěl ďábelské ódy"
-for i = 1, utf8.len(test) do
-  local offset = utf8.offset(test, i)
-  local codepoint = utf8.codepoint(test, offset)
-  print(codepoint, utf8.char(codepoint))
-end
