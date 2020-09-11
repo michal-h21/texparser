@@ -11,7 +11,7 @@ local utfcodepoint = utf8.codepoint
 
 -- initialize texparser object
 local texparser = {
-  types={}
+  catcodes={}
 }
 
 texparser.__index = texparser
@@ -28,7 +28,7 @@ end
 
 -- declare utf8 values for basic tex categories
 function set_type(name, character) 
-  texparser.types[utfcodepoint(character)] = name 
+  texparser.catcodes[utfcodepoint(character)] = name 
 end
 
 -- initialize catcodes
@@ -69,7 +69,7 @@ function texparser:tokenize(line, line_no)
   local tokens = {}
   local maxpos = 0
   for pos, char in get_chars(line) do
-    local typ = self.types[char]
+    local typ = self.catcodes[char]
     if not typ then
       typ = ((char > 64 and char < 91) or (char > 96 and char < 123)) and c_letter or c_other
     end
