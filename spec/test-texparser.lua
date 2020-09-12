@@ -29,7 +29,12 @@ describe("token scanning", function()
     assert.are.equal(nil, scanparser:next_char())
   end)
   it("can scan tokens", function()
-
+    scanparser.source_pos = 1
+    local first = scanparser:scan_token()
+    local second = scanparser:scan_token()
+    local third = scanparser:scan_token()
+    assert.Table(second)
+    assert.Nil(third)
   end)
 end)
 
