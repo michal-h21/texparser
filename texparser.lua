@@ -89,12 +89,16 @@ end
 function texparser:tokenize(line, line_no)
   local tokens = {}
   local maxpos = 0
-  for pos, char in get_chars(line) do
+  -- for pos, char in get_chars(line) do
+  local char = self:next_char()
+  while char do
+    local pos = self.source_pos - 1
     self.line_no = line_no
     self.column = pos
     local catcode = self:get_token_catcode(char)
     tokens[#tokens+1] =  self:make_token(utfchar(char), catcode, line_no, pos)
     maxpos = pos -- save highest position, in order to be able to correctly make token for a newline
+    char = self:next_char()
   end
   return tokens, maxpos
 end
@@ -119,8 +123,11 @@ function texparser:get_raw_tokens(text, filename)
   local line_no = 0
   local tokens = {}
   for line in  text:gmatch("([^\n]*)") do
-    line_no = line_no + 1
     line = line:gsub(" *$", "")  -- remove space characters at the end of line
+    self.source = line
+    self.source_pos = 1
+    self.source_len = utf8.len(line)
+    line_no = line_no + 1
     local parsed_tokens, maxpos = self:tokenize(line, line_no)
     for _,token in ipairs(parsed_tokens) do -- process tokens on the current line
       tokens[#tokens+1] = token
@@ -149,14 +156,6 @@ function texparser:scan_token()
   if not codepoint then return nil, msg end
   local catcode = self:get_token_catcode(codepoint)
   local token = self:make_token(utfchar(codepoint), catcode, self.line_no, self.column)
-  -- break line
-  -- if catcode == c_endline then
-  --   self.column = 0
-  --   self.line_no = self.line_no + 1
-  -- end
-  -- self.column = self.column + 1
-  -- table.insert(self.raw_tokens, token)
-  -- self.pos = #self.raw_tokens
   return token
 end
 
