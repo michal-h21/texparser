@@ -30,6 +30,12 @@ local function getparser(text, filename)
   self.column = 1 -- current position on a line
   self.catcodes= {}
   for k,v in pairs(default_catcodes) do self.catcodes[k] = v end
+  -- see https://www.overleaf.com/learn/latex/How_TeX_macros_actually_work:_Part_3
+  -- for description of these properties
+  self.curcs = 0 -- the current control sequence
+  self.curchar = 0 -- the current character
+  self.curcmd = 0 -- 
+  self.curtok = {}
   return self
 end
 
@@ -183,20 +189,17 @@ function texparser:read_cs(newtokens)
   local current = {}
   local cs_token = self:prev_token() -- the cs starts one character to the left
   local token = self:next_token()
-  while token and is_part_of_cs(token) do -- loop over characters that are part of cs
-    current[#current + 1] = token.value -- concat characters
-    token = self:next_token()
-  end
-  if #current == 0 then
-    token = self:prev_token()
-    if token then
-      current = {token.value } -- parse at least the next character
-      self.pos = self.pos + 1
+  if token.catcode == c_letter then
+    while token and is_part_of_cs(token) do -- loop over characters that are part of cs
+      current[#current + 1] = token.value -- concat characters
+      token = self:next_token()
     end
+    self.pos = self.pos - 1
+    cs_token.value = table.concat(current) -- value now contains cs name
   else
-    self.pos = self.pos - 1 -- fix the pointer to the current token
+    -- save the current token value as cs_name value
+    cs_token.value = token.value
   end
-  cs_token.value = table.concat(current) -- value now contains cs name
   newtokens[#newtokens + 1] = cs_token
   return pos
 end
