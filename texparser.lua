@@ -16,6 +16,11 @@ local texparser = {
 
 local default_catcodes = {}
 
+-- input processor states
+local s_newline = 1
+local s_skipspaces = 2
+local s_middle = 3
+
 texparser.__index = texparser
 
 local function getparser(text, filename)
@@ -28,6 +33,8 @@ local function getparser(text, filename)
   self.source_len = utf8.len(text)
   self.line_no = 1 -- current line
   self.column = 1 -- current position on a line
+  self.state = s_newline 
+  self.grouplevel = 1
   self.catcodes= {}
   for k,v in pairs(default_catcodes) do self.catcodes[k] = v end
   -- see https://www.overleaf.com/learn/latex/How_TeX_macros_actually_work:_Part_3
@@ -77,6 +84,7 @@ set_type(c_comment,"%")
 set_type(c_endline, "\n")
 set_type(c_ignore, "\r")
 
+
 function texparser:get_token_catcode(char)
   local catcode = self.catcodes[char]
   if not catcode then
@@ -91,16 +99,84 @@ function texparser:tokenize(line, line_no)
   local maxpos = 0
   -- for pos, char in get_chars(line) do
   local char = self:next_char()
+  self.state = s_newline -- initialize state for each line
   while char do
     local pos = self.source_pos - 1
     self.line_no = line_no
     self.column = pos
     local catcode = self:get_token_catcode(char)
-    tokens[#tokens+1] =  self:make_token(utfchar(char), catcode, line_no, pos)
+    tokens[#tokens+1] = self:handle_token(catcode, char)
+    -- tokens[#tokens+1] =  self:make_token(utfchar(char), catcode, line_no, pos)
     maxpos = pos -- save highest position, in order to be able to correctly make token for a newline
     char = self:next_char()
   end
   return tokens, maxpos
+end
+
+
+function  texparser:handle_token(catcode, char)
+  local state = self.state
+  if catcode == c_space then
+    if state == s_newline then
+      return nil -- space are ignored at new line
+    elseif state == s_skipspaces then
+      return nil -- ignore double spaces
+    end
+    self.state = s_skipspaces -- next spaces should be ignored
+    return self:make_token(utfchar(char), catcode, self.line_no, self.column)
+  elseif catcode==c_escape then
+    return self:handle_cs()
+  elseif catcode == c_ignore then
+    return nil
+  elseif  catcode==c_endline then
+    if state == s_newline then -- we found paragraph
+      return self:make_token("par", c_escape, self.line_no, self.column)
+    -- else
+    -- TeX converts newlines to spaces, but we may want to keep them
+      -- return self:make_token(" ", c_space, self.line_no, self.column) -- convert newline to space
+    end
+  elseif catcode == c_begin then
+    self.grouplevel = self.grouplevel + 1
+  elseif catcode == c_end then
+    self.grouplevel = self.grouplevel - 1
+  elseif catcode == c_comment then
+    -- TeX ignores comments, but they can be interesting for our purposes
+    -- so we will make a new token that will keep the whole text in the comment
+    local offset = utfoffset(self.source, self.source_pos)
+    local comment_text = self.source:sub(offset):gsub("\n", "") 
+    -- make sure that we will not process rest of the input line 
+    self.source_len = 0
+    self.source_pos = 1
+    return self:make_token(comment_text, catcode, self.line_no, self.column)
+  end
+  self.state = s_middle -- default state 
+  return self:make_token(utfchar(char), catcode, self.line_no, self.column)
+end
+
+function texparser:handle_cs()
+  local read_next = function()
+    local next_char = self:next_char()
+    local catcode = self:get_token_catcode(next_char)
+    return next_char, catcode
+  end
+  local name = {}
+  local value 
+  local next_char, catcode = read_next()
+  while catcode == c_letter do
+    table.insert(name, utfchar(next_char))
+    next_char, catcode = read_next()
+  end
+  self.state = s_skipspaces
+  if #name == 0 then
+    if catcode ~= c_space then -- skip spaces by default after control space
+      self.state = s_middle -- state after control symbol
+    end
+    value = next_char
+  else
+    value = table.concat(name)
+    self.source_pos = self.source_pos - 1 -- return the scanner one character back
+  end
+  return self:make_token(value, c_escape, self.line_no, self.column)
 end
 
 -- 
@@ -123,8 +199,9 @@ function texparser:get_raw_tokens(text, filename)
   local line_no = 0
   local tokens = {}
   for line in  text:gmatch("([^\n]*)") do
-    line = line:gsub(" *$", "")  -- remove space characters at the end of line
-    self.source = line
+    -- line = line:gsub(" *$", "")  -- remove space characters at the end of line
+    line = line .. "\n" -- tokenizer needs to handle  endline chars
+    self.source = line 
     self.source_pos = 1
     self.source_len = utf8.len(line)
     line_no = line_no + 1
@@ -132,9 +209,7 @@ function texparser:get_raw_tokens(text, filename)
     for _,token in ipairs(parsed_tokens) do -- process tokens on the current line
       tokens[#tokens+1] = token
     end
-    tokens[#tokens+1] = self:make_token("\n", c_endline, line_no, maxpos + 1) -- add new line char
   end
-  tokens[#tokens] = nil -- remove last spurious endline
   self.raw_tokens = tokens
   return tokens
 end
@@ -179,7 +254,7 @@ function texparser:prev_token()
 end
 
 
-function texparser:read_cs(newtokens)
+function texparser:read_cs_old(newtokens)
   local function is_part_of_cs(token)
     if token.catcode == c_letter then
       return true
@@ -238,8 +313,9 @@ function texparser:parse(text, filename)
   local text = text or self.source
   self.filename = filename or self.filename
   local raw_tokens = self:get_raw_tokens(text) -- initial tokenization
-  local tokens = self:process(raw_tokens) -- detect commands, environments and groups
-  return tokens
+  -- local tokens = self:process(raw_tokens) -- detect commands and comments
+  -- return tokens
+  return raw_tokens
 end
 
 local test = [[
