@@ -55,6 +55,7 @@ describe("basic tests", function()
     assert.are.equal(tex_to_text "   hello   ", "hello ") -- one space comes from implicit newline
     assert.are.equal(tex_to_text "\\hello world", "world") 
     assert.are.equal(tex_to_text "hello\\world % ", "hello")
+    assert.are.equal(tex_to_text "\\hello.txt", tex_to_text "\\hello .txt")
   end)
 
 end)
