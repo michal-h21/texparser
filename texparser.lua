@@ -31,12 +31,14 @@ local function getparser(text, filename)
   self.source = text -- input text
   self.source_pos = 1 -- current position in the input buffer
   self.source_len = utf8.len(text)
-  self.line_no = 1 -- current line
+  self.line_no = 0 -- current line
   self.column = 1 -- current position on a line
   self.state = s_newline 
   self.grouplevel = 1
   self.catcodes= {}
   for k,v in pairs(default_catcodes) do self.catcodes[k] = v end
+  self.endlinechar = "\n" -- hadnle endlinechar
+  self.catcodes[self.endlinechar] = c_endline
   -- see https://www.overleaf.com/learn/latex/How_TeX_macros_actually_work:_Part_3
   -- for description of these properties
   self.curcs = 0 -- the current control sequence
@@ -94,7 +96,7 @@ function texparser:get_token_catcode(char)
 end
 
 -- convert input characters to tokens
-function texparser:tokenize(line, line_no)
+function texparser:tokenize(line)
   local tokens = {}
   local maxpos = 0
   -- for pos, char in get_chars(line) do
@@ -102,7 +104,6 @@ function texparser:tokenize(line, line_no)
   self.state = s_newline -- initialize state for each line
   while char do
     local pos = self.source_pos - 1
-    self.line_no = line_no
     self.column = pos
     local catcode = self:get_token_catcode(char)
     tokens[#tokens+1] = self:handle_token(catcode, char)
@@ -192,23 +193,39 @@ function texparser:make_token(value, catcode, line_no, col)
 end
 
 
-function texparser:get_raw_tokens(text, filename)
+function texparser:input_processor(text)
+  -- clean lines
+  local lines = {}
+  for line in  text:gmatch("([^\n]*)") do
+    line = line:gsub(" *$", "")  -- remove space characters at the end of line
+    line = line .. self.endlinechar -- tokenizer needs to handle endline chars
+    lines[#lines + 1] = line
+  end
+  return lines
+end
+
+function texparser:next_line()
+  local lines = self.lines or {}
+  self.line_no = self.line_no + 1
+  local line = lines[self.line_no]
+  if not line then return nil, "Line doesn't exits: " .. self.line_no end
+  self.source = line 
+  self.source_pos = 1
+  self.source_len = utf8.len(line)
+  return line
+end
+
+function texparser:get_raw_tokens()
   -- convert text to list of characters with assigned catcode
   -- I know that TeX doesn't tokenize full text at once, we do it for simplicity, 
   -- as we don't intend to support full expansion etc. We may change it in the future if necessary
   local line_no = 0
+
   local tokens = {}
-  for line in  text:gmatch("([^\n]*)") do
-    -- line = line:gsub(" *$", "")  -- remove space characters at the end of line
-    line = line .. "\n" -- tokenizer needs to handle  endline chars
-    self.source = line 
-    self.source_pos = 1
-    self.source_len = utf8.len(line)
-    line_no = line_no + 1
-    local parsed_tokens, maxpos = self:tokenize(line, line_no)
-    for _,token in ipairs(parsed_tokens) do -- process tokens on the current line
-      tokens[#tokens+1] = token
-    end
+  line_no = line_no + 1
+  local parsed_tokens, maxpos = self:tokenize(line, line_no)
+  for _,token in ipairs(parsed_tokens) do -- process tokens on the current line
+    tokens[#tokens+1] = token
   end
   self.raw_tokens = tokens
   return tokens
@@ -217,8 +234,13 @@ end
 -- parse next character from the input buffer 
 function texparser:next_char()
   local source_pos = self.source_pos
+  if not self.source then return nil, "end of file" end
   -- stop parsing when we are at the end of buffer
-  if not (source_pos <= self.source_len) then return nil, "end of input buffer" end
+  if not (source_pos <= self.source_len) then 
+    local line, msg = self:next_line() 
+    if not line then return nil, msg end
+    return self:next_char()-- nil, "end of input buffer" 
+  end
   local offset = utfoffset(self.source, source_pos)
   self.source_pos = source_pos + 1
   return utfcodepoint(self.source, offset)
@@ -312,7 +334,9 @@ end
 function texparser:parse(text, filename)
   local text = text or self.source
   self.filename = filename or self.filename
-  local raw_tokens = self:get_raw_tokens(text) -- initial tokenization
+  self.lines = self:input_processor(text)
+  self:next_line() -- initialize first line
+  local raw_tokens = self:get_raw_tokens() -- initial tokenization
   -- local tokens = self:process(raw_tokens) -- detect commands and comments
   -- return tokens
   return raw_tokens
