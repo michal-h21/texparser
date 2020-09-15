@@ -21,23 +21,6 @@ local function tex_to_text(text)
   return to_text(parser:parse())
 end
 
-describe("token scanning", function()
-  local scanparser = texparser("ab")
-  it("can parse characters", function()
-    assert.are.equal("a", utf8.char(scanparser:next_char()))
-    assert.are.equal("b", utf8.char(scanparser:next_char()))
-    assert.are.equal(nil, scanparser:next_char())
-  end)
-  it("can scan tokens", function()
-    scanparser.source_pos = 1
-    local first = scanparser:scan_token()
-    local second = scanparser:scan_token()
-    local third = scanparser:scan_token()
-    assert.Table(second)
-    assert.Nil(third)
-  end)
-end)
-
 
 describe("basic tests", function()
   it("can parse text", function()
