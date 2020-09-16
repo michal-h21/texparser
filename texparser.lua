@@ -44,7 +44,8 @@ local function getparser(text, filename)
   self.curcs = 0 -- the current control sequence
   self.curchar = 0 -- the current character
   self.curcmd = 0 -- 
-  self.curtok = {}
+  self.token_stack = {{pos=1, tokens={}}} --
+  self.curtok = self.token_stack[1] -- current token list
   return self
 end
 
@@ -182,6 +183,22 @@ function texparser:handle_cs()
   end
   return self:make_token(value, c_escape, self.line_no, self.column)
 end
+
+function texparser:start_token_list()
+  local new_token_list = {pos = 1, tokens = {}}
+  -- insert new token list to the token list stact
+  self.token_stack[#self.token_stack + 1] = new_token_list
+  -- set it as the current token list
+  self.curtok = new_token_list
+end
+
+function texparser:end_token_list()
+  -- remove the current token list from token stack
+  local last_item = table.remove(self.token_stack)
+  self.curtok = self.token_stack[#self.token_stack] -- set the previous token list in the stack as the current 
+  return last_item
+end
+
 
 -- 
 function texparser:make_token(value, catcode, line_no, col)
