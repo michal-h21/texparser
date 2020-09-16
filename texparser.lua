@@ -156,16 +156,20 @@ end
 
 function texparser:handle_cs()
   local read_next = function()
-    local next_char = self:next_char()
-    local catcode = self:get_token_catcode(next_char)
-    return next_char, catcode
+    local codepoint = self:next_char()
+    return codepoint, self:get_token_catcode(codepoint)
   end
   local name = {}
   local value 
   local next_char, catcode = read_next()
   while catcode == c_letter do
     table.insert(name, utfchar(next_char))
-    next_char, catcode = read_next()
+    -- try the next token
+    next_char, catcode = self:future_tok(self.source_pos - 1)
+    if next_char and catcode == c_letter then
+      -- increase source pos only when it is a letter
+      self:next_char() -- 
+    end
   end
   self.state = s_skipspaces
   if #name == 0 then
@@ -175,7 +179,6 @@ function texparser:handle_cs()
     value = next_char
   else
     value = table.concat(name)
-    self.source_pos = self.source_pos - 1 -- return the scanner one character back
   end
   return self:make_token(value, c_escape, self.line_no, self.column)
 end
@@ -231,19 +234,46 @@ function texparser:get_raw_tokens()
   return tokens
 end
 
+function texparser:get_source_pos(source_pos)
+  -- get position of the current character on the current line
+  -- if not initialized return nil
+  if not self.source then return nil end
+  -- if end of line reached, return -1
+  local source_pos = source_pos or self.source_pos
+  if not (source_pos <= self.source_len) then return -1 end
+  return source_pos
+end
+
 -- parse next character from the input buffer 
 function texparser:next_char()
-  local source_pos = self.source_pos
-  if not self.source then return nil, "end of file" end
+  local source_pos = self:get_source_pos()
+  if source_pos == nil then return nil, "end of file" 
   -- stop parsing when we are at the end of buffer
-  if not (source_pos <= self.source_len) then 
+  elseif source_pos == -1 then
     local line, msg = self:next_line() 
     if not line then return nil, msg end
     return self:next_char()-- nil, "end of input buffer" 
   end
+  self.source_pos = source_pos + 1 -- set position to the next char
+  return self:read_char(source_pos) -- but return the currrent char
+end
+
+-- return codepoint at the current source pos
+function texparser:read_char(source_pos)
   local offset = utfoffset(self.source, source_pos)
-  self.source_pos = source_pos + 1
   return utfcodepoint(self.source, offset)
+end
+
+
+-- return character and catcode of the next character
+-- don't update source position and don't read next line
+function texparser:future_tok()
+  local source_pos = self:get_source_pos(self.source_pos)
+  -- return if invalid char was found
+  if source_pos == nil or source_pos == -1 then return source_pos, nil end
+  local codepoint = self:read_char(source_pos)
+  local token = self:get_token_catcode(codepoint)
+  return codepoint, token
 end
 
 
