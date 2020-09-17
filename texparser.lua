@@ -107,12 +107,18 @@ function texparser:tokenize(line)
     local pos = self.source_pos - 1
     self.column = pos
     local catcode = self:get_token_catcode(char)
-    tokens[#tokens+1] = self:handle_token(catcode, char)
+    local token = self:handle_token(catcode, char)
+    tokens[#tokens+1] = self:main_expand(token)
     -- tokens[#tokens+1] =  self:make_token(utfchar(char), catcode, line_no, pos)
     maxpos = pos -- save highest position, in order to be able to correctly make token for a newline
     char = self:next_char()
   end
   return tokens, maxpos
+end
+
+function texparser:main_expand(token)
+  -- expansion from the main list
+  return token
 end
 
 
