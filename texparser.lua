@@ -194,6 +194,43 @@ function texparser:handle_cs()
   return self:make_token(value, c_escape, self.line_no, self.column)
 end
 
+function texparser:get_cs_params(name)
+  -- detect command parameters. the parameters for given cs may be given in the texcommands object. 
+  -- if there is no configuration for the command, then try to detect what kind of parameters the command
+  -- needs. for example [#1]{#2}, etc.
+  -- pass rest of the current line + next one to detect the parameters
+
+end
+
+-- this function can work in two modes -- when called from the main_processor, scan from the input file
+-- otherwise, it will scan the passed token list
+function texparser:scan_arguments(parameters, token_list, position)
+  -- define function to read a next token depending on the mode
+  -- read from the input buffer
+  local read_token_char = function()
+    local char = self:next_char()
+    local catcode = self:get_token_catcode(char)
+    return self:handle_token(catcode, char)
+  end
+  -- read from token list
+  local token_list_pos = position or 1
+  local read_token_list = function()
+    local token = token_list[token_list_pos]
+    token_list_pos = token_list_pos + 1
+    return token
+  end
+  -- decide which function to use, depending on the current input mode
+  local next_token = token_list and read_token_list or read_token_char
+  -- table with token list for each parsed parameter
+  local output = {}
+  local function process_parameter(specification)
+  end
+  for _, spec in ipairs(parameters) do
+    output[#output + 1] = process_parameter(spec)
+  end
+
+end
+
 function texparser:start_token_list()
   local new_token_list = {pos = 1, tokens = {}}
   -- insert new token list to the token list stact
