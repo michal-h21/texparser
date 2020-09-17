@@ -185,7 +185,7 @@ function texparser:handle_cs()
   self.state = s_skipspaces
   if #name == 0 then
     if catcode ~= c_space then -- skip spaces by default after control space
-      self.state = s_middle -- state after control symbol
+      self.state = s_middle -- state after control symbol. don't skip spaces.
     end
     value = next_char
   else
