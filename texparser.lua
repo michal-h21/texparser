@@ -235,7 +235,7 @@ function texparser:next_line()
   return line
 end
 
-function texparser:get_raw_tokens()
+function texparser:main_processor()
   -- convert text to list of characters with assigned catcode
   -- I know that TeX doesn't tokenize full text at once, we do it for simplicity, 
   -- as we don't intend to support full expansion etc. We may change it in the future if necessary
@@ -300,7 +300,7 @@ function texparser:parse(text, filename)
   self.filename = filename or self.filename
   self.lines = self:input_processor(text)
   self:next_line() -- initialize first line
-  local raw_tokens = self:get_raw_tokens() -- initial tokenization
+  local raw_tokens = self:main_processor() -- initial tokenization
   -- local tokens = self:process(raw_tokens) -- detect commands and comments
   -- return tokens
   return raw_tokens
