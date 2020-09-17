@@ -150,8 +150,7 @@ function  texparser:handle_token(catcode, char)
   elseif catcode == c_comment then
     -- TeX ignores comments, but they can be interesting for our purposes
     -- so we will make a new token that will keep the whole text in the comment
-    local offset = utfoffset(self.source, self.source_pos)
-    local comment_text = self.source:sub(offset):gsub("\n", "") 
+    local comment_text = self:get_rest_of_line():gsub("\n", "") 
     -- make sure that we will not process rest of the input line 
     self.source_len = 0
     self.source_pos = 1
@@ -159,6 +158,11 @@ function  texparser:handle_token(catcode, char)
   end
   self.state = s_middle -- default state 
   return self:make_token(utfchar(char), catcode, self.line_no, self.column)
+end
+
+function texparser:get_rest_of_line()
+  local offset = utfoffset(self.source, self.source_pos)
+  return self.source:sub(offset)
 end
 
 function texparser:handle_cs()
