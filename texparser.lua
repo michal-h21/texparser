@@ -173,6 +173,7 @@ function texparser:handle_cs()
   local name = {}
   local value 
   local next_char, catcode = read_next()
+  local parameters = {}
   while catcode == c_letter do
     table.insert(name, utfchar(next_char))
     -- try the next token
@@ -190,8 +191,11 @@ function texparser:handle_cs()
     value = next_char
   else
     value = table.concat(name)
+    parameters = self:get_cs_params(value)
   end
-  return self:make_token(value, c_escape, self.line_no, self.column)
+  local token = self:make_token(value, c_escape, self.line_no, self.column)
+  token.parameters = parameters
+  return token
 end
 
 function texparser:get_cs_params(name)
@@ -199,7 +203,10 @@ function texparser:get_cs_params(name)
   -- if there is no configuration for the command, then try to detect what kind of parameters the command
   -- needs. for example [#1]{#2}, etc.
   -- pass rest of the current line + next one to detect the parameters
-
+  local rest = self:get_rest_of_line()
+  local next_line = self.lines[self.line_no + 1] or ""
+  local text_to_detect = rest .. next_line
+  print("text to detect:".. text_to_detect)
 end
 
 -- this function can work in two modes -- when called from the main_processor, scan from the input file
